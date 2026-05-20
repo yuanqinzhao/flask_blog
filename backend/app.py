@@ -21,6 +21,11 @@ def create_app(config_name=None):
     # CORS配置
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+    @app.after_request
+    def add_ngrok_header(response):
+        response.headers['ngrok-skip-browser-warning'] = 'true'
+        return response
+
     # 添加这个中间件来绕过 ngrok 浏览器警告
     @app.after_request
     def add_ngrok_header(response):
