@@ -19,7 +19,22 @@ def create_app(config_name=None):
     db.init_app(app)
     jwt = JWTManager(app)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # 在 create_app 函数中找到 CORS 配置部分
+    allowed_origins = [
+        'http://localhost:8080',
+        'http://127.0.0.1:8080',
+        'https://sputter-backtalk-next.ngrok-free.dev',
+        'https://blog-frontend-abc123.vercel.app',  # 替换为你的实际域名
+    ]
+
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": allowed_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)

@@ -14,6 +14,7 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
     # CORS配置
+
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')  # 生产环境改为具体域名
 
     # 上传文件配置
