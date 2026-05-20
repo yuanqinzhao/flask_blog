@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask博客 - 首页</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/index.html" class="logo">📝 Flask博客</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/index.html">首页</a>
+                <a href="/login.html">登录</a>
+                <a href="/register.html">注册</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div id="messageContainer"></div>
+
+        <div class="hero-section">
+            <h1>欢迎来到Flask博客</h1>
+            <p>分享你的想法和故事</p>
+            <div class="hero-buttons" id="heroButtons">
+                <a href="/register.html" class="btn btn-primary">立即注册</a>
+                <a href="/login.html" class="btn btn-secondary">登录</a>
+            </div>
+        </div>
+
+        <div class="posts-grid" id="postsContainer">
+            <div class="loading">加载中...</div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Flask博客系统. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/posts.js"></script>
+    <script>
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 更新导航栏
+            Auth.updateNavbar();
+
+            // 如果用户已登录，修改英雄区域按钮
+            if (APIUtils.isAuthenticated()) {
+                document.getElementById('heroButtons').innerHTML = `
+                    <a href="/create_post.html" class="btn btn-primary">开始写作</a>
+                `;
+            }
+
+            // 加载文章列表
+            const result = await Posts.getPosts();
+            if (result.success) {
+                Posts.renderPostList(result.posts);
+            } else {
+                document.getElementById('postsContainer').innerHTML = `
+                    <div class="error">加载失败: ${result.error}</div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

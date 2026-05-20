@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - Flask博客</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            color: #555;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .form-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .form-container h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-check input {
+            margin-right: 0.5rem;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+        }
+
+        .form-footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: auto;
+        }
+
+        /* 弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-dialog {
+            background: white;
+            border-radius: 15px;
+            padding: 0;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .modal-header.error {
+            background: #fff5f5;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-header.success {
+            background: #f0fff4;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-header.warning {
+            background: #fffaf0;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .modal-icon {
+            font-size: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .modal-body p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .btn-modal {
+            padding: 0.7rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-modal-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-modal-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-modal-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-modal-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        @media (max-width: 500px) {
+            .form-container {
+                padding: 1.5rem;
+            }
+
+            .navbar .container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/index.html" class="logo">📝 Flask博客</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/index.html">首页</a>
+                <a href="/login.html">登录</a>
+                <a href="/register.html">注册</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="form-container">
+            <h2>登录</h2>
+
+            <form id="loginForm" novalidate>
+                <div class="form-group">
+                    <label for="username">用户名或邮箱</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        placeholder="请输入用户名或邮箱"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="请输入密码"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div class="form-check">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">记住我</label>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    登录
+                </button>
+            </form>
+
+            <div class="form-footer">
+                还没有账号？ <a href="/register.html">立即注册</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- 提示弹窗 -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal-dialog">
+            <div class="modal-header" id="modalHeader">
+                <span class="modal-icon" id="modalIcon"></span>
+                <span class="modal-title" id="modalTitle"></span>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-primary" onclick="closeModal()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Flask博客系统. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        // 弹窗函数
+        function showAlert(title, message, type = 'error') {
+            const modal = document.getElementById('alertModal');
+            const header = document.getElementById('modalHeader');
+            const icon = document.getElementById('modalIcon');
+            const titleEl = document.getElementById('modalTitle');
+            const messageEl = document.getElementById('modalMessage');
+
+            // 设置图标和样式
+            const configs = {
+                error: { icon: '❌', className: 'error' },
+                success: { icon: '✅', className: 'success' },
+                warning: { icon: '⚠️', className: 'warning' },
+                info: { icon: 'ℹ️', className: 'warning' }
+            };
+
+            const config = configs[type] || configs.error;
+
+            // 清除旧样式
+            header.className = 'modal-header';
+            header.classList.add(config.className);
+
+            icon.textContent = config.icon;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('alertModal').classList.remove('show');
+        }
+
+        // 点击遮罩层关闭
+        document.getElementById('alertModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // ESC键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // 登录函数
+        async function login(username, password, remember) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username.trim(),
+                        password: password,
+                        remember: remember
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    return { success: false, error: data.error || '登录失败' };
+                }
+
+                return { success: true, data };
+            } catch (error) {
+                return { success: false, error: '网络连接失败，请检查后端服务是否启动' };
+            }
+        }
+
+        // 表单提交
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 前端验证
+            if (!username.trim()) {
+                showAlert('提示', '请输入用户名或邮箱', 'warning');
+                return;
+            }
+
+            if (!password) {
+                showAlert('提示', '请输入密码', 'warning');
+                return;
+            }
+
+            // 禁用按钮
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+
+            const result = await login(username, password, remember);
+
+            if (result.success) {
+                // 保存token和用户信息
+                localStorage.setItem('access_token', result.data.access_token);
+                localStorage.setItem('user_info', JSON.stringify(result.data.user));
+                if (result.data.refresh_token) {
+                    localStorage.setItem('refresh_token', result.data.refresh_token);
+                }
+
+                showAlert('登录成功', '欢迎回来！正在跳转...', 'success');
+
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 1500);
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+
+                // 根据错误类型显示不同的提示
+                if (result.error.includes('用户名或密码错误')) {
+                    showAlert('登录失败', '用户名或密码错误，请检查后重试', 'error');
+                } else if (result.error.includes('账号已被禁用')) {
+                    showAlert('账号异常', '该账号已被禁用，请联系管理员', 'error');
+                } else if (result.error.includes('网络')) {
+                    showAlert('连接失败', '无法连接到服务器，请确保后端服务已启动', 'error');
+                } else {
+                    showAlert('登录失败', result.error, 'error');
+                }
+            }
+        });
+
+        // 检查是否已登录
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                window.location.href = '/index.html';
+            }
+        });
+    </script>
+</body>
+</html>

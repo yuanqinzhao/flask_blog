@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写文章 - Flask博客</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            color: #555;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        .editor-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 2.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .editor-header h1 {
+            font-size: 2rem;
+            color: #333;
+        }
+
+        .back-btn {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .form-group .label-hint {
+            font-weight: 400;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        #title {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            outline: none;
+            font-weight: 500;
+        }
+
+        #title:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #title::placeholder {
+            color: #ccc;
+            font-weight: 400;
+        }
+
+        #content {
+            width: 100%;
+            min-height: 400px;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            line-height: 1.8;
+            resize: vertical;
+            transition: all 0.3s ease;
+            outline: none;
+            font-family: inherit;
+        }
+
+        #content:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #content::placeholder {
+            color: #ccc;
+        }
+
+        .char-count {
+            text-align: right;
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+        }
+
+        .char-count.warning {
+            color: #e67e22;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: auto;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            padding: 0.4rem 0.8rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .toolbar button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .editor-container {
+                padding: 1.5rem;
+                margin: 0.5rem;
+            }
+
+            .editor-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            .editor-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            #content {
+                min-height: 300px;
+            }
+
+            .navbar .container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/index.html" class="logo">📝 Flask博客</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/index.html">首页</a>
+                <a href="/login.html">登录</a>
+                <a href="/register.html">注册</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="editor-container">
+            <div class="editor-header">
+                <h1 id="pageTitle">📝 写文章</h1>
+                <a href="/index.html" class="back-btn">← 返回首页</a>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <form id="postForm" novalidate>
+                <div class="form-group">
+                    <label for="title">
+                        文章标题 <span class="label-hint">(必填，最多200字)</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        placeholder="请输入文章标题..."
+                        required
+                        maxlength="200"
+                    >
+                    <div class="char-count">
+                        <span id="titleCount">0</span>/200
+                    </div>
+                    <div class="error-message" id="titleError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="content">
+                        文章内容 <span class="label-hint">(必填)</span>
+                    </label>
+                    
+                    <!-- 简单的编辑工具栏 -->
+                    <div class="toolbar">
+                        <button type="button" onclick="insertFormat('**', '**')" title="粗体">
+                            <strong>B</strong>
+                        </button>
+                        <button type="button" onclick="insertFormat('*', '*')" title="斜体">
+                            <em>I</em>
+                        </button>
+                        <button type="button" onclick="insertFormat('~~', '~~')" title="删除线">
+                            <s>S</s>
+                        </button>
+                        <button type="button" onclick="insertFormat('\n- ', '')" title="列表">
+                            📋 列表
+                        </button>
+                        <button type="button" onclick="insertFormat('\n> ', '')" title="引用">
+                            💬 引用
+                        </button>
+                    </div>
+                    
+                    <textarea 
+                        id="content" 
+                        name="content" 
+                        placeholder="请输入文章内容..."
+                        required
+                    ></textarea>
+                    <div class="char-count">
+                        <span id="contentCount">0</span> 字符
+                    </div>
+                    <div class="error-message" id="contentError"></div>
+                </div>
+
+                <div class="editor-actions">
+                    <button type="button" class="btn btn-secondary" onclick="window.location.href='/index.html'">
+                        取消
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="draftBtn" onclick="saveDraft()">
+                        💾 保存草稿
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span class="btn-text">📤 发布文章</span>
+                        <span class="spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Flask博客系统. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <script>
+        // API配置
+        const API_BASE_URL = 'http://localhost:5000/api';
+        
+        // 全局变量
+        let isEditMode = false;
+        let editPostId = null;
+        
+        // 工具函数
+        function getAccessToken() {
+            return localStorage.getItem('access_token');
+        }
+        
+        function getUserInfo() {
+            const userInfo = localStorage.getItem('user_info');
+            return userInfo ? JSON.parse(userInfo) : null;
+        }
+        
+        function isAuthenticated() {
+            return !!getAccessToken();
+        }
+        
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                if (container.querySelector('.alert')) {
+                    container.innerHTML = '';
+                }
+            }, 5000);
+        }
+        
+        function showFieldError(fieldId, message) {
+            const errorElement = document.getElementById(fieldId + 'Error');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+                
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.style.borderColor = '#e74c3c';
+                }
+            }
+        }
+        
+        function clearFieldError(fieldId) {
+            const errorElement = document.getElementById(fieldId + 'Error');
+            if (errorElement) {
+                errorElement.textContent = '';
+                errorElement.classList.remove('show');
+                
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.style.borderColor = '#e0e0e0';
+                }
+            }
+        }
+        
+        // API请求函数
+        async function apiRequest(url, options = {}) {
+            const token = getAccessToken();
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                ...options
+            };
+            
+            const response = await fetch(`${API_BASE_URL}${url}`, config);
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || '请求失败');
+            }
+            
+            return data;
+        }
+        
+        // 创建文章
+        async function createPost(title, content) {
+            return await apiRequest('/posts', {
+                method: 'POST',
+                body: JSON.stringify({ title, content })
+            });
+        }
+        
+        // 更新文章
+        async function updatePost(postId, title, content) {
+            return await apiRequest(`/posts/${postId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ title, content })
+            });
+        }
+        
+        // 获取文章详情
+        async function getPost(postId) {
+            return await apiRequest(`/posts/${postId}`);
+        }
+        
+        // 表单验证
+        function validateForm(title, content) {
+            let isValid = true;
+            
+            // 清除之前的错误
+            clearFieldError('title');
+            clearFieldError('content');
+            
+            // 验证标题
+            if (!title || title.trim().length === 0) {
+                showFieldError('title', '请输入文章标题');
+                isValid = false;
+            } else if (title.trim().length > 200) {
+                showFieldError('title', '标题不能超过200个字符');
+                isValid = false;
+            }
+            
+            // 验证内容
+            if (!content || content.trim().length === 0) {
+                showFieldError('content', '请输入文章内容');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 保存草稿
+        function saveDraft() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            
+            if (title || content) {
+                const draft = {
+                    title: title,
+                    content: content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // 如果编辑模式，保存编辑ID
+                if (isEditMode) {
+                    draft.editPostId = editPostId;
+                }
+                
+                localStorage.setItem('post_draft', JSON.stringify(draft));
+                showMessage('草稿已保存！', 'success');
+            } else {
+                showMessage('没有内容可保存', 'info');
+            }
+        }
+        
+        // 加载草稿
+        function loadDraft() {
+            const draftStr = localStorage.getItem('post_draft');
+            if (draftStr) {
+                try {
+                    const draft = JSON.parse(draftStr);
+                    
+                    // 只在创建模式且没有内容时加载草稿
+                    if (!isEditMode && !document.getElementById('title').value && !document.getElementById('content').value) {
+                        if (draft.title || draft.content) {
+                            const loadDraft = confirm('检测到未发布的草稿，是否加载？');
+                            if (loadDraft) {
+                                document.getElementById('title').value = draft.title || '';
+                                document.getElementById('content').value = draft.content || '';
+                                updateCharCount();
+                                showMessage('草稿已加载', 'info');
+                            } else {
+                                localStorage.removeItem('post_draft');
+                            }
+                        }
+                    }
+                } catch (e) {
+                    localStorage.removeItem('post_draft');
+                }
+            }
+        }
+        
+        // 清除草稿
+        function clearDraft() {
+            localStorage.removeItem('post_draft');
+        }
+        
+        // 更新字符计数
+        function updateCharCount() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            
+            document.getElementById('titleCount').textContent = title.length;
+            document.getElementById('contentCount').textContent = content.length;
+            
+            // 标题接近上限时变橙色
+            const titleCount = document.getElementById('titleCount');
+            if (title.length > 180) {
+                titleCount.classList.add('warning');
+            } else {
+                titleCount.classList.remove('warning');
+            }
+        }
+        
+        // 插入格式化文本
+        function insertFormat(before, after) {
+            const textarea = document.getElementById('content');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            
+            const selectedText = text.substring(start, end);
+            const newText = text.substring(0, start) + before + selectedText + after + text.substring(end);
+            
+            textarea.value = newText;
+            textarea.focus();
+            
+            // 设置光标位置
+            if (selectedText) {
+                textarea.selectionStart = start + before.length;
+                textarea.selectionEnd = end + before.length;
+            } else {
+                textarea.selectionStart = start + before.length;
+                textarea.selectionEnd = start + before.length;
+            }
+            
+            updateCharCount();
+        }
+        
+        // 更新导航栏
+        function updateNavbar() {
+            const userInfo = getUserInfo();
+            const navLinks = document.getElementById('navLinks');
+            
+            if (userInfo) {
+                navLinks.innerHTML = `
+                    <a href="/index.html">首页</a>
+                    <a href="/create_post.html">写文章</a>
+                    <a href="/user_posts.html?user_id=${userInfo.id}">我的文章</a>
+                    <a href="#" onclick="logout()">登出 (${escapeHtml(userInfo.username)})</a>
+                `;
+            } else {
+                navLinks.innerHTML = `
+                    <a href="/index.html">首页</a>
+                    <a href="/login.html">登录</a>
+                    <a href="/register.html">注册</a>
+                `;
+            }
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, char => map[char]);
+        }
+        
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_info');
+            window.location.href = '/index.html';
+        }
+        
+        // 处理表单提交
+        document.getElementById('postForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // 表单验证
+            if (!validateForm(title, content)) {
+                return;
+            }
+            
+            // 显示加载状态
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            
+            try {
+                let result;
+                
+                if (isEditMode && editPostId) {
+                    // 更新文章
+                    result = await updatePost(editPostId, title, content);
+                    showMessage('文章更新成功！正在跳转...', 'success');
+                } else {
+                    // 创建文章
+                    result = await createPost(title, content);
+                    showMessage('文章发布成功！正在跳转...', 'success');
+                }
+                
+                // 清除草稿
+                clearDraft();
+                
+                // 跳转到文章详情页
+                setTimeout(() => {
+                    window.location.href = `/post.html?id=${result.post.id}`;
+                }, 1500);
+                
+            } catch (error) {
+                showMessage('操作失败：' + error.message, 'danger');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }
+        });
+        
+        // 加载编辑的文章
+        async function loadEditPost() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const postId = urlParams.get('id');
+            
+            if (postId) {
+                try {
+                    const result = await getPost(postId);
+                    const post = result.post;
+                    
+                    // 检查是否是文章作者
+                    const userInfo = getUserInfo();
+                    if (!userInfo || userInfo.id !== post.user_id) {
+                        showMessage('你没有权限编辑此文章', 'danger');
+                        setTimeout(() => {
+                            window.location.href = '/index.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    // 设置为编辑模式
+                    isEditMode = true;
+                    editPostId = post.id;
+                    
+                    // 更新页面标题和按钮
+                    document.getElementById('pageTitle').textContent = '✏️ 编辑文章';
+                    document.getElementById('submitBtn').querySelector('.btn-text').textContent = '💾 更新文章';
+                    
+                    // 填充表单
+                    document.getElementById('title').value = post.title;
+                    document.getElementById('content').value = post.content;
+                    updateCharCount();
+                    
+                } catch (error) {
+                    showMessage('加载文章失败：' + error.message, 'danger');
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 2000);
+                }
+            }
+        }
+        
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            if (!isAuthenticated()) {
+                showMessage('请先登录后再写文章', 'info');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+            
+            // 更新导航栏
+            updateNavbar();
+            
+            // 加载编辑文章（如果是编辑模式）
+            loadEditPost();
+            
+            // 加载草稿（仅在创建模式）
+            if (!isEditMode) {
+                loadDraft();
+            }
+            
+            // 监听输入变化，更新字符计数
+            document.getElementById('title').addEventListener('input', function() {
+                updateCharCount();
+                if (this.value.trim().length > 0) {
+                    clearFieldError('title');
+                }
+            });
+            
+            document.getElementById('content').addEventListener('input', function() {
+                updateCharCount();
+                if (this.value.trim().length > 0) {
+                    clearFieldError('content');
+                }
+            });
+            
+            // 键盘快捷键 Ctrl+S 保存草稿
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    saveDraft();
+                }
+            });
+            
+            // 离开页面前提示保存
+            window.addEventListener('beforeunload', function(e) {
+                const title = document.getElementById('title').value;
+                const content = document.getElementById('content').value;
+                
+                if (title || content) {
+                    saveDraft();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

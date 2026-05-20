@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章详情 - Flask博客</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/index.html" class="logo">📝 Flask博客</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/index.html">首页</a>
+                <a href="/login.html">登录</a>
+                <a href="/register.html">注册</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div id="messageContainer"></div>
+        <div id="postContainer">
+            <div class="loading">加载中...</div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Flask博客系统. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/posts.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            Auth.updateNavbar();
+
+            // 获取文章ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const postId = urlParams.get('id');
+
+            if (!postId) {
+                document.getElementById('postContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h3>文章ID无效</h3>
+                        <a href="/index.html" class="btn btn-primary">返回首页</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // 加载文章
+            const result = await Posts.getPost(postId);
+
+            if (!result.success) {
+                document.getElementById('postContainer').innerHTML = `
+                    <div class="empty-state">
+                        <h3>${result.error}</h3>
+                        <a href="/index.html" class="btn btn-primary">返回首页</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const post = result.post;
+            const userInfo = APIUtils.getUserInfo();
+            const isAuthor = userInfo && userInfo.id === post.user_id;
+
+            document.getElementById('postContainer').innerHTML = `
+                <div class="post-detail">
+                    <h1>${APIUtils.escapeHtml(post.title)}</h1>
+
+                    <div class="post-meta">
+                        <span class="post-author">
+                            <i class="fas fa-user"></i>
+                            <a href="/user_posts.html?user_id=${post.user_id}">
+                                ${APIUtils.escapeHtml(post.author.username)}
+                            </a>
+                        </span>
+                        <span class="post-date">
+                            <i class="fas fa-calendar"></i>
+                            ${APIUtils.formatDate(post.created_at)}
+                        </span>
+                        ${post.updated_at !== post.created_at ? `
+                            <span class="post-date">
+                                <i class="fas fa-edit"></i>
+                                更新于 ${APIUtils.formatDate(post.updated_at)}
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    <div class="post-content">
+                        ${APIUtils.escapeHtml(post.content)}
+                    </div>
+
+                    <div class="post-actions">
+                        <a href="/index.html" class="btn btn-back">
+                            <i class="fas fa-arrow-left"></i> 返回首页
+                        </a>
+
+                        ${isAuthor ? `
+                            <a href="/create_post.html?id=${post.id}" class="btn btn-edit">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            <button onclick="deletePost(${post.id})" class="btn btn-delete">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        // 删除文章函数
+        async function deletePost(postId) {
+            if (!confirm('确定要删除这篇文章吗？')) return;
+
+            const result = await Posts.deletePost(postId);
+
+            if (result.success) {
+                window.location.href = '/index.html';
+            } else {
+                document.getElementById('messageContainer').innerHTML = `
+                    <div class="alert alert-danger">删除失败: ${result.error}</div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

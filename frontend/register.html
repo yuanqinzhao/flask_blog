@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - Flask博客</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            color: #555;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .form-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .form-container h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.9rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .form-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+        }
+
+        .form-footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: auto;
+        }
+
+        .password-requirements {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.3rem;
+        }
+
+        @media (max-width: 500px) {
+            .form-container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+
+            .navbar .container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/index.html" class="logo">📝 Flask博客</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/index.html">首页</a>
+                <a href="/login.html">登录</a>
+                <a href="/register.html">注册</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="form-container">
+            <h2>创建账号</h2>
+
+            <div id="messageContainer"></div>
+
+            <form id="registerForm" novalidate>
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        placeholder="请输入用户名（3-80个字符）"
+                        required
+                        minlength="3"
+                        maxlength="80"
+                        autocomplete="username"
+                    >
+                    <div class="error-message" id="usernameError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">邮箱</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="请输入邮箱地址"
+                        required
+                        autocomplete="email"
+                    >
+                    <div class="error-message" id="emailError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="请输入密码（至少6个字符）"
+                        required
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+                    <div class="password-requirements">密码长度至少6个字符</div>
+                    <div class="error-message" id="passwordError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">确认密码</label>
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        placeholder="请再次输入密码"
+                        required
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+                    <div class="error-message" id="confirmPasswordError"></div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    注册
+                </button>
+            </form>
+
+            <div class="form-footer">
+                已有账号？ <a href="/login.html">立即登录</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Flask博客系统. 保留所有权利。</p>
+        </div>
+    </footer>
+
+    <script>
+        // 在 register.html 中添加弹窗相关代码
+
+        // 弹窗函数（添加在script开头）
+        function showAlert(title, message, type = 'error') {
+            const modal = document.getElementById('alertModal');
+            const header = document.getElementById('modalHeader');
+            const icon = document.getElementById('modalIcon');
+            const titleEl = document.getElementById('modalTitle');
+            const messageEl = document.getElementById('modalMessage');
+
+            const configs = {
+                error: { icon: '❌', className: 'error' },
+                success: { icon: '✅', className: 'success' },
+                warning: { icon: '⚠️', className: 'warning' }
+            };
+
+            const config = configs[type] || configs.error;
+
+            header.className = 'modal-header';
+            header.classList.add(config.className);
+            icon.textContent = config.icon;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('alertModal').classList.remove('show');
+        }
+
+        // 在register.html的body结束标签前添加弹窗HTML
+        // API配置
+        const API_BASE_URL = 'http://localhost:5000/api';
+
+        // 工具函数
+        function showMessage(message, type = 'danger') {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+
+            // 3秒后自动隐藏消息
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        function showFieldError(fieldId, message) {
+            const errorElement = document.getElementById(fieldId + 'Error');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+
+                // 给输入框添加错误样式
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.style.borderColor = '#e74c3c';
+                }
+            }
+        }
+
+        function clearFieldError(fieldId) {
+            const errorElement = document.getElementById(fieldId + 'Error');
+            if (errorElement) {
+                errorElement.textContent = '';
+                errorElement.classList.remove('show');
+
+                // 恢复输入框样式
+                const input = document.getElementById(fieldId);
+                if (input) {
+                    input.style.borderColor = '#e0e0e0';
+                }
+            }
+        }
+
+        function clearAllErrors() {
+            ['username', 'email', 'password', 'confirmPassword'].forEach(clearFieldError);
+        }
+
+        // 表单验证
+        function validateForm(username, email, password, confirmPassword) {
+            let isValid = true;
+            clearAllErrors();
+
+            // 验证用户名
+            if (!username || username.trim().length < 3) {
+                showFieldError('username', '用户名至少需要3个字符');
+                isValid = false;
+            } else if (username.trim().length > 80) {
+                showFieldError('username', '用户名不能超过80个字符');
+                isValid = false;
+            }
+
+            // 验证邮箱
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email.trim())) {
+                showFieldError('email', '请输入有效的邮箱地址');
+                isValid = false;
+            }
+
+            // 验证密码
+            if (!password || password.length < 6) {
+                showFieldError('password', '密码长度至少为6个字符');
+                isValid = false;
+            }
+
+            // 验证确认密码
+            if (password !== confirmPassword) {
+                showFieldError('confirmPassword', '两次输入的密码不一致');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // 注册函数
+        async function register(username, email, password) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username.trim(),
+                        email: email.trim(),
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '注册失败，请稍后再试');
+                }
+
+                return { success: true, data };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        // 处理表单提交
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 表单验证
+            if (!validateForm(username, email, password, confirmPassword)) {
+                return;
+            }
+
+            // 禁用提交按钮，显示加载状态
+            submitBtn.disabled = true;
+            submitBtn.textContent = '注册中...';
+
+            try {
+                const result = await register(username, email, password);
+
+                if (result.success) {
+                    // 保存用户信息和token
+                    if (result.data.access_token) {
+                        localStorage.setItem('access_token', result.data.access_token);
+                    }
+                    if (result.data.refresh_token) {
+                        localStorage.setItem('refresh_token', result.data.refresh_token);
+                    }
+                    if (result.data.user) {
+                        localStorage.setItem('user_info', JSON.stringify(result.data.user));
+                    }
+
+                    showMessage('注册成功！正在跳转...', 'success');
+
+                    // 延迟跳转到首页
+                    setTimeout(() => {
+                        window.location.href = '/index.html';
+                    }, 1500);
+                } else {
+                    showMessage(result.error || '注册失败，请稍后再试', 'danger');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '注册';
+                }
+            } catch (error) {
+                showMessage('网络错误：' + error.message, 'danger');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+            }
+        });
+
+        // 实时验证
+        document.getElementById('username').addEventListener('input', function() {
+            if (this.value.trim().length >= 3) {
+                clearFieldError('username');
+            }
+        });
+
+        document.getElementById('email').addEventListener('input', function() {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailRegex.test(this.value.trim())) {
+                clearFieldError('email');
+            }
+        });
+
+        document.getElementById('password').addEventListener('input', function() {
+            if (this.value.length >= 6) {
+                clearFieldError('password');
+            }
+
+            // 检查确认密码
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            if (confirmPassword && this.value === confirmPassword) {
+                clearFieldError('confirmPassword');
+            }
+        });
+
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            if (this.value === password) {
+                clearFieldError('confirmPassword');
+            }
+        });
+
+        // 检查是否已登录
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                // 如果已登录，跳转到首页
+                window.location.href = '/index.html';
+            }
+        });
+    </script>
+<!-- 提示弹窗 -->
+<div class="modal-overlay" id="alertModal">
+    <div class="modal-dialog">
+        <div class="modal-header" id="modalHeader">
+            <span class="modal-icon" id="modalIcon"></span>
+            <span class="modal-title" id="modalTitle"></span>
+        </div>
+        <div class="modal-body">
+            <p id="modalMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-primary" onclick="closeModal()">确定</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
