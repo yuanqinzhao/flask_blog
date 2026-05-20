@@ -13,9 +13,9 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
-    # CORS配置
-
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')  # 生产环境改为具体域名
+    # CORS配置 - 添加具体域名
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS',
+        'http://localhost:8080,http://127.0.0.1:8080,http://192.168.31.66:8080,https://flask-blog-orpin.vercel.app')
 
     # 上传文件配置
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

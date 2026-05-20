@@ -4,7 +4,7 @@ const CONFIG = {
     API_BASE_URL: 'https://sputter-backtalk-next.ngrok-free.dev/api',
 
     // 请求超时时间（毫秒）
-    TIMEOUT: 300000,
+    TIMEOUT: 30000,
 
     // 存储键名
     STORAGE_KEYS: {
@@ -13,9 +13,3 @@ const CONFIG = {
         USER_INFO: 'user_info'
     }
 };
-
-// 根据环境自动切换API地址
-if (window.location.hostname !== '192.168.31.66' && window.location.hostname !== '127.0.0.1') {
-    // 生产环境 - 修改为你的后端服务器地址
-    CONFIG.API_BASE_URL = 'https://sputter-backtalk-next.ngrok-free.dev/api';
-}
