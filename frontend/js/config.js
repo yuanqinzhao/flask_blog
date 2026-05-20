@@ -4,7 +4,7 @@ const CONFIG = {
     API_BASE_URL: 'https://sputter-backtalk-next.ngrok-free.dev/api',
 
     // 请求超时时间（毫秒）
-    TIMEOUT: 30000,
+    TIMEOUT: 300000,
 
     // 存储键名
     STORAGE_KEYS: {
