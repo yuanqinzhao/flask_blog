@@ -21,23 +21,23 @@ def create_app(config_name=None):
     # CORS配置
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    @app.after_request
-    def add_ngrok_header(response):
-        response.headers['ngrok-skip-browser-warning'] = 'true'
-        return response
+    app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    app.config["MAX_PICTURE_LENGTH"] = 16 * 1024 * 1024
 
-    # 添加这个中间件来绕过 ngrok 浏览器警告
-    @app.after_request
-    def add_ngrok_header(response):
-        # 添加 ngrok-skip-browser-warning 头来绕过警告页面
-        response.headers['ngrok-skip-browser-warning'] = 'true'
-        return response
+    #确保目录存在
+    if not os.path.exists(app.config["UPLOAD_FOLDER"]):
+        os.makedirs(app.config["UPLOAD_FOLDER"])
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
 
     with app.app_context():
         db.create_all()
+
+    # 提供上传文件的访问
+    @app.route('/upload/<filename>')
+    def upload_pictures(filename):
+        return send_from_dictory(app.config['UPLOAD_FOLDER'],filename)
 
     @jwt.unauthorized_loader
     def unauthorized_response(callback):

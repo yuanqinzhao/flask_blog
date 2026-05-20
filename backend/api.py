@@ -6,6 +6,10 @@ from datetime import datetime
 
 api_bp = Blueprint('api', __name__)
 
+# 允许的图片扩展名
+ALLOWED_PRO_NAMES = ['png','jpg','jpeg','gif','webp','bmp']
+def allowed_file(filename):
+    return '.' in filename and filename.rspilit('.',1)[1].lower() in ALLOWED_PRO_NAMES
 
 @api_bp.route('/api/posts', methods=['GET'])
 def get_posts(): # 获取多页文章
