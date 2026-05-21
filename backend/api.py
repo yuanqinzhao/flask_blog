@@ -1,61 +1,85 @@
-# backend/api.py
-import os.path
-import uuid
-
-from flask import Blueprint, request, jsonify,current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from models import db, User, Post
 from datetime import datetime
+import os
+import uuid
+from functools import wraps
 
 api_bp = Blueprint('api', __name__)
 
-# 允许的图片扩展名
-ALLOWED_PRO_NAMES = ['png','jpg','jpeg','gif','webp','bmp']
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_PRO_NAMES
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
 
-@api_bp.route('/api/upload',methods=['POST'])
-@jwt_required()
-def upload_image():  # 上传图片
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def jwt_required_with_file(fn):
+    """自定义装饰器，先检查文件再验证JWT"""
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # 先检查是否有文件
+        if 'image' not in request.files:
+            # 检查是否是OPTIONS请求
+            if request.method == 'OPTIONS':
+                return '', 200
+            return jsonify({'error': '没有选择文件'}), 400
+
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
+
+        # 检查文件格式
+        if not allowed_file(file.filename):
+            return jsonify({'error': '不支持的文件格式，请上传图片文件'}), 400
+
+        # 验证JWT
+        try:
+            verify_jwt_in_request()
+            return fn(*args, **kwargs)
+        except Exception as e:
+            return jsonify({'error': '未授权访问', 'msg': str(e)}), 401
+
+    return wrapper
+
+
+@api_bp.route('/api/upload', methods=['POST', 'OPTIONS'])
+@jwt_required_with_file
+def upload_image():
+    """上传图片"""
     try:
         current_user_id = get_jwt_identity()
         current_user_id = int(current_user_id)
-        if 'image' not in request.files:
-            return jsonify({'error':'没有选择文件'}),400
+
         file = request.files['image']
 
-        if file.filename == '':
-            return jsonify({'error':'没有选择文件'}),400
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{ext}"
 
-        if not allowed_file(file.filename):
-            return jsonify({'error':'不支持的文件格式'}),400
-
-        #生成第一文件名
-        ext = file.filename.rsplit('.',1)[1].lower()
-        filename = f'{uuid.uuid4().hex}.{ext}'
-
-        #按用户ID创建子目录
-        user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'],str(current_user_id))
+        user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], str(current_user_id))
         if not os.path.exists(user_folder):
             os.makedirs(user_folder)
 
-        filepath = os.path.join(user_folder,filename)
+        filepath = os.path.join(user_folder, filename)
         file.save(filepath)
 
-        # 返回图片url
-        image_url = f'/upload/{current_user_id}/{filename}'
+        image_url = f"/uploads/{current_user_id}/{filename}"
 
         return jsonify({
-            'message':'上传成功',
-            'url':image_url,
-            'filename':filename
-        }),201
+            'message': '上传成功',
+            'url': image_url,
+            'filename': filename
+        }), 201
+
     except Exception as e:
-        return jsonify({'error':f'上传失败：{str(e)}'}),500
+        return jsonify({'error': f'上传失败: {str(e)}'}), 500
 
 
+# 以下保持原有代码不变
 @api_bp.route('/api/posts', methods=['GET'])
-def get_posts(): # 获取多页文章
+def get_posts():
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
@@ -86,7 +110,7 @@ def get_posts(): # 获取多页文章
 
 
 @api_bp.route('/api/posts/<int:post_id>', methods=['GET'])
-def get_post(post_id): # 获取单页文章
+def get_post(post_id):
     try:
         post = Post.query.get(post_id)
 
@@ -104,10 +128,9 @@ def get_post(post_id): # 获取单页文章
 
 @api_bp.route('/api/posts', methods=['POST'])
 @jwt_required()
-def create_post():  # 发布文章
+def create_post():
     try:
         current_user_id = get_jwt_identity()
-        # 关键修复：将字符串ID转回整数
         current_user_id = int(current_user_id)
 
         data = request.get_json()
@@ -142,11 +165,10 @@ def create_post():  # 发布文章
 
 
 @api_bp.route('/api/posts/<int:post_id>', methods=['PUT'])
-@jwt_required()  #更新文章
+@jwt_required()
 def update_post(post_id):
     try:
         current_user_id = get_jwt_identity()
-        # 关键修复：将字符串ID转回整数
         current_user_id = int(current_user_id)
 
         post = Post.query.get(post_id)
@@ -188,10 +210,9 @@ def update_post(post_id):
 
 @api_bp.route('/api/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
-def delete_post(post_id): #删除文章
+def delete_post(post_id):
     try:
         current_user_id = get_jwt_identity()
-        # 关键修复：将字符串ID转回整数
         current_user_id = int(current_user_id)
 
         post = Post.query.get(post_id)
@@ -213,7 +234,7 @@ def delete_post(post_id): #删除文章
 
 
 @api_bp.route('/api/users/<int:user_id>', methods=['GET'])
-def get_user(user_id): # 获取用户信息
+def get_user(user_id):
     try:
         user = User.query.get(user_id)
 
@@ -227,7 +248,7 @@ def get_user(user_id): # 获取用户信息
 
 
 @api_bp.route('/api/users/<int:user_id>/posts', methods=['GET'])
-def get_user_posts(user_id): # 获取用户文章
+def get_user_posts(user_id):
     try:
         user = User.query.get(user_id)
 
