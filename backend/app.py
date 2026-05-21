@@ -19,7 +19,13 @@ def create_app(config_name=None):
     jwt = JWTManager(app)
 
     # CORS配置
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/api/*":
+                             {
+                                 "origins": "*",
+                                 "methods":["GET","POST","PUT","DELETE","OPtIONS"],
+                                 "allow_headers":["Content-Type","Authorization"],
+                                 "supports_credentials":True
+                                }})
 
     app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     app.config["MAX_PICTURE_LENGTH"] = 16 * 1024 * 1024
@@ -27,6 +33,34 @@ def create_app(config_name=None):
     #确保目录存在
     if not os.path.exists(app.config["UPLOAD_FOLDER"]):
         os.makedirs(app.config["UPLOAD_FOLDER"])
+
+    # 处理OPTIONS预检请求
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            response = app.make_default_options_response()
+            headers = response.headers
+
+            headers['Access-Control-Allow-Origin'] = '*'
+            headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPtIONS'
+            headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+            headers['Access-Control-Max-Age'] = '3600'
+
+            return response
+
+        # 修复Authorization头
+    @app.before_request
+    def fix_auth_header():
+        if request.path.startswith('/api/'):
+            auth = request.headers.get('Authorization', '')
+            if auth and not auth.startswith('Bearer '):
+                if auth.startswith('Bearer'):
+                    token = auth[6:].strip()
+                else:
+                    token = auth.strip()
+                request.environ['HTTP_AUTHORIZATION'] = f'Bearer {token}'
+
+
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)

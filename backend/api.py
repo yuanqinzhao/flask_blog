@@ -1,5 +1,8 @@
 # backend/api.py
-from flask import Blueprint, request, jsonify
+import os.path
+import uuid
+
+from flask import Blueprint, request, jsonify,current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Post
 from datetime import datetime
@@ -9,7 +12,47 @@ api_bp = Blueprint('api', __name__)
 # 允许的图片扩展名
 ALLOWED_PRO_NAMES = ['png','jpg','jpeg','gif','webp','bmp']
 def allowed_file(filename):
-    return '.' in filename and filename.rspilit('.',1)[1].lower() in ALLOWED_PRO_NAMES
+    return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_PRO_NAMES
+
+@api_bp.route('/api/upload',methods=['POST'])
+@jwt_required()
+def upload_image():  # 上传图片
+    try:
+        current_user_id = get_jwt_identity()
+        current_user_id = int(current_user_id)
+        if 'image' not in request.files:
+            return jsonify({'error':'没有选择文件'}),400
+        file = request.files['image']
+
+        if file.filename == '':
+            return jsonify({'error':'没有选择文件'}),400
+
+        if not allowed_file(file.filename):
+            return jsonify({'error':'不支持的文件格式'}),400
+
+        #生成第一文件名
+        ext = file.filename.rsplit('.',1)[1].lower()
+        filename = f'{uuid.uuid4().hex}.{ext}'
+
+        #按用户ID创建子目录
+        user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'],str(current_user_id))
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+
+        filepath = os.path.join(user_folder,filename)
+        file.save(filepath)
+
+        # 返回图片url
+        image_url = f'/upload/{current_user_id}/{filename}'
+
+        return jsonify({
+            'message':'上传成功',
+            'url':image_url,
+            'filename':filename
+        }),201
+    except Exception as e:
+        return jsonify({'error':f'上传失败：{str(e)}'}),500
+
 
 @api_bp.route('/api/posts', methods=['GET'])
 def get_posts(): # 获取多页文章
