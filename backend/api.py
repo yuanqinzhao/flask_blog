@@ -1,5 +1,9 @@
+from idlelib.query import Query
+
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+
+from models import Comment
 from models import db, User, Post
 from datetime import datetime
 import os
@@ -9,13 +13,16 @@ from functools import wraps
 api_bp = Blueprint('api', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
+ALLOWED_MESSAGE_EXTENSIONS = {'docx','doc','txt','rtf'}
 
 
-def allowed_file(filename):
+def allowed_image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def allowed_message_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_MESSAGE_EXTENSIONS
 
-def jwt_required_with_file(fn):
+def jwt_required_with_image_file(fn):
     """自定义装饰器，先检查文件再验证JWT"""
 
     @wraps(fn)
@@ -32,7 +39,7 @@ def jwt_required_with_file(fn):
             return jsonify({'error': '没有选择文件'}), 400
 
         # 检查文件格式
-        if not allowed_file(file.filename):
+        if not allowed_image_file(file.filename):
             return jsonify({'error': '不支持的文件格式，请上传图片文件'}), 400
 
         # 验证JWT
@@ -44,41 +51,98 @@ def jwt_required_with_file(fn):
 
     return wrapper
 
+def jwt_required_with_message_file(fn):
+    """自定义装饰器，先检查文件再验证JWT"""
 
-@api_bp.route('/api/upload', methods=['POST', 'OPTIONS'])
-@jwt_required_with_file
-def upload_image():
-    """上传图片"""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # 先检查是否有文件
+        if 'message' not in request.files:
+            # 检查是否是OPTIONS请求
+            if request.method == 'OPTIONS':
+                return '', 200
+            return jsonify({'error': '没有选择文件'}), 400
+
+        file = request.files['message']
+        if file.filename == '':
+            return jsonify({'error': '没有选择文件'}), 400
+
+        # 检查文件格式
+        if not allowed_message_file(file.filename):
+            return jsonify({'error': '不支持的文件格式，请上传图片文件'}), 400
+
+        # 验证JWT
+        try:
+            verify_jwt_in_request()
+            return fn(*args, **kwargs)
+        except Exception as e:
+            return jsonify({'error': '未授权访问', 'msg': str(e)}), 401
+
+    return wrapper
+
+@api_bp.route('/api/uploadmessage',methods=['POST','OPTIONS'])
+@jwt_required_with_message_file
+def upload_message():
     try:
         current_user_id = get_jwt_identity()
         current_user_id = int(current_user_id)
 
-        file = request.files['image']
+        file_image = request.files['message']
 
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f"{uuid.uuid4().hex}.{ext}"
+        ext = file_image.filename.rsplit('.', 1)[1].lower()
+        file_messagename = f"{uuid.uuid4().hex}.{ext}"
 
         user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], str(current_user_id))
         if not os.path.exists(user_folder):
             os.makedirs(user_folder)
-
-        filepath = os.path.join(user_folder, filename)
-        file.save(filepath)
-
-        image_url = f"/uploads/{current_user_id}/{filename}"
+        file_messagepath = os.path.join(user_folder, file_messagename)
+        file_image.save(file_messagepath)
+        message_url = f'/uploads/{current_user_id}/{file_messagename}'
 
         return jsonify({
             'message': '上传成功',
-            'url': image_url,
-            'filename': filename
+            'url': message_url,
+            'filename': file_messagename
         }), 201
 
     except Exception as e:
         return jsonify({'error': f'上传失败: {str(e)}'}), 500
 
 
-# 以下保持原有代码不变
-@api_bp.route('/api/posts', methods=['GET'])
+@api_bp.route('/api/upload', methods=['POST', 'OPTIONS'])
+@jwt_required_with_image_file
+def upload_image():
+    """上传图片"""
+    try:
+        current_user_id = get_jwt_identity()
+        current_user_id = int(current_user_id)
+
+        file_image = request.files['image']
+
+        ext = file_image.filename.rsplit('.', 1)[1].lower()
+        file_imagename = f"{uuid.uuid4().hex}.{ext}"
+
+        user_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], str(current_user_id))
+        if not os.path.exists(user_folder):
+            os.makedirs(user_folder)
+
+        fileimagepath = os.path.join(user_folder, file_imagename)
+        file_image.save(fileimagepath)
+
+        image_url = f"/uploads/{current_user_id}/{file_imagename}"
+
+        return jsonify({
+            'message': '上传成功',
+            'url': image_url,
+            'filename': file_imagename
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': f'上传失败: {str(e)}'}), 500
+
+
+
+@api_bp.route('/api/posts', methods=['GET']) # 获取文章
 def get_posts():
     try:
         page = request.args.get('page', 1, type=int)
@@ -109,7 +173,7 @@ def get_posts():
         return jsonify({'error': f'获取文章列表失败: {str(e)}'}), 500
 
 
-@api_bp.route('/api/posts/<int:post_id>', methods=['GET'])
+@api_bp.route('/api/posts/<int:post_id>', methods=['GET']) # 获取文章列表
 def get_post(post_id):
     try:
         post = Post.query.get(post_id)
@@ -163,6 +227,90 @@ def create_post():
         db.session.rollback()
         return jsonify({'error': f'创建文章失败: {str(e)}'}), 500
 
+@api_bp.route('/api/posts/<int:post_id>/comments', methods=['GET'])  # 获取评论
+def get_comments(post_id):
+    try:
+        post = Post.query.get(post_id)
+
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        sort = request.args.get('sort', 'latest')
+
+        query = Comment.query.filter_by(post_id=post_id, parent_id=None)
+
+        if sort == 'oldest':
+            query = query.order_by(Comment.created_at.asc())
+        elif sort == 'popular':
+            query = query.order_by(Comment.replies.count().desc())
+        else:
+            query = query.order_by(Comment.created_at.desc())
+
+        pagination = query.pagination(page=page, per_page=per_page, error_out=False)
+        comments = pagination.items
+
+        return jsonify({
+            'comments': [comment.to_dict() for comment in comments],
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'current_page': page,
+            'has_next': pagination.has_next,
+            'has_prev': pagination.has_prev
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'获取评论失败: {str(e)}'}), 500
+
+@api_bp.route('/api/posts/<int:post_id>/comments',methods=['POST']) # 创建评论
+@jwt_required()
+def create_comment(post_id):
+    try:
+        current_user_id = get_jwt_identity()
+        current_user_id = int(current_user_id)
+
+        post = Post.query.get(post_id)
+
+        if post.user_id != current_user_id:
+            return jsonify({'error': '没有权限评论此文章'}), 403
+
+        if not post:
+            return jsonify({'error': '文章不存在'}), 404
+
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': '数据获取失败'}), 400
+
+        content = data.get('content','').strip()
+        parent_id = data.get('parent_id')
+
+        if not content:
+            return jsonify({'error': '评论不能为空'}), 400
+
+        if len(content) > 200:
+            return jsonify({'error': '评论不能超过200字符'}), 400
+
+        if parent_id:
+            parent_comment = Comment.query.get(parent_id)
+            if not parent_comment:
+                return jsonify({'error': '回复的评论不存在'}), 400
+            if parent_comment.post_id != post_id:
+                return jsonify({'error': '评论不属于此文章'}), 400
+
+        comment = Comment(
+            content = content,
+            user_id = current_user_id,
+            post_id = post_id,
+            parent_id = parent_id
+        )
+
+        db.session.add(comment)
+        db.session.commit()
+
+        return jsonify({'comment': '评论创建成功','comments':f'{comment}', 'post': post.to_dict()}),201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'评论失败: {str(e)}'}), 500
 
 @api_bp.route('/api/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
