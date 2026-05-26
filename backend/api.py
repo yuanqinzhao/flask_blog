@@ -2,6 +2,7 @@ from idlelib.query import Query
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
+from imageio.config.plugins import summary
 
 from models import Comment
 from models import db, User, Post
@@ -190,7 +191,7 @@ def get_post(post_id):
         return jsonify({'error': f'获取文章失败: {str(e)}'}), 500
 
 
-@api_bp.route('/api/posts', methods=['POST'])
+@api_bp.route('/api/posts', methods=['POST'])  # 发布文章
 @jwt_required()
 def create_post():
     try:
@@ -203,6 +204,7 @@ def create_post():
             return jsonify({'error': '标题和内容不能为空'}), 400
 
         title = data['title'].strip()
+        summary = data['summary'].strip()
         content = data['content'].strip()
 
         if not title or not content:
@@ -211,8 +213,12 @@ def create_post():
         if len(title) > 200:
             return jsonify({'error': '标题长度不能超过200个字符'}), 400
 
+        if len(summary) > 200:
+            return jsonify({'error': '概要长度不能超过200个字符'}), 400
+
         post = Post(
             title=title,
+            summary=summary,
             content=content,
             user_id=current_user_id,
             is_published=data.get('is_published', True)
@@ -245,7 +251,7 @@ def get_comments(post_id):
         else:
             query = query.order_by(Comment.created_at.desc())
 
-        pagination = query.pagination(page=page, per_page=per_page, error_out=False)
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         comments = pagination.items
 
         return jsonify({
@@ -312,7 +318,64 @@ def create_comment(post_id):
         db.session.rollback()
         return jsonify({'error': f'评论失败: {str(e)}'}), 500
 
-@api_bp.route('/api/posts/<int:post_id>', methods=['PUT'])
+@api_bp.route('/api/comments/<int:comment_id>', methods=['PUT']) # 编辑评论
+@jwt_required()
+def update_comment(comment_id):
+    try:
+        current_user_id = get_jwt_identity()
+        current_user_id = int(current_user_id)
+
+        post = Post.query.get(comment_id)
+
+        if not post:
+            return jsonify({'error': '评论不存在'}), 404
+
+        if post.user_id != current_user_id:
+            return jsonify({'error': '没有权限修改此评论'}), 403
+
+        data = request.get_json()
+
+
+        if 'content' in data:
+            content = data['content'].strip()
+            if not content:
+                return jsonify({'error': '内容不能为空'}), 400
+            post.content = content
+
+        post.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'message': '评论更新成功', 'post': post.to_dict()}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'更新评论失败: {str(e)}'}), 500
+
+@api_bp.route('/api/comments/<int:post_id>', methods=['DELETE']) # 删除评论
+@jwt_required()
+def delete_comment(comment_id):
+    try:
+        current_user_id = get_jwt_identity()
+        current_user_id = int(current_user_id)
+
+        comment = Post.query.get(comment_id)
+
+        if not comment:
+            return jsonify({'error': '评论不存在'}), 404
+
+        if comment.user_id != current_user_id:
+            return jsonify({'error': '没有权限删除此评论'}), 403
+
+        db.session.delete(comment)
+        db.session.commit()
+
+        return jsonify({'message': '评论删除成功'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'删除评论失败: {str(e)}'}), 500
+
+@api_bp.route('/api/posts/<int:post_id>', methods=['PUT']) # 编辑文章
 @jwt_required()
 def update_post(post_id):
     try:
@@ -336,6 +399,12 @@ def update_post(post_id):
             if len(title) > 200:
                 return jsonify({'error': '标题长度不能超过200个字符'}), 400
             post.title = title
+
+        if 'summary' in data:
+            summary = data['summary'].strip()
+            if not summary:
+                return jsonify({'error': '内容不能为空'}), 400
+            post.summary = summary
 
         if 'content' in data:
             content = data['content'].strip()

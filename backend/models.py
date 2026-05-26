@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 db = SQLAlchemy()
 
 
-class User(db.Model):
+class User(db.Model): # 用户模型
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -36,11 +36,12 @@ class User(db.Model):
         }
 
 
-class Post(db.Model):
+class Post(db.Model): # 文章模型
     __tablename__ = 'posts'
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
+    summary = db.Column(db.String(1000))
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -53,6 +54,7 @@ class Post(db.Model):
         return {
             'id': self.id,
             'title': self.title,
+            'summary': self.summary,
             'content': self.content,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
@@ -62,7 +64,7 @@ class Post(db.Model):
         }
 
 
-class Comment(db.Model):
+class Comment(db.Model): # 评论模型
     __tablename__ = 'comments'
 
     id = db.Column(db.Integer, primary_key=True)
